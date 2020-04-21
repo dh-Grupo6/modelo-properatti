@@ -1,13 +1,16 @@
 # %%
 import pandas as pd
 import numpy as np
+
+
+# %%
 data = pd.read_csv('/home/DS-DH/notebooks/digitalHouse/properatti.csv')
 
 # %%
 matriz = pd.read_csv('/home/DS-DH/notebooks/digitalHouse/matriz.csv',sep='|')
 
 # %%
-data_= pd.read_csv('/home/DS-DH/notebooks/digitalHouse/matriz.csv',sep='|')
+data_= matriz
 
 # %%
 
@@ -148,7 +151,7 @@ data_.iloc[:,indices_dummys_barrios:] = dummys_barrios
 #SKLEARN
 
 #GENERO VARIABLES INDEPENDIENTES
-x_feactures = data_.iloc[:,31:]
+x_feactures = data_.iloc[:,38:]
 df1 = data_['superficie_total']
 xs = pd.concat([df1,x_feactures],axis=1)
 
@@ -179,23 +182,50 @@ x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
 #FIT 
 modelo = linear_model.LinearRegression()
 modelo.fit(x_train,y_train)
-
-# %%
 #PREDECIR DATOS "Y" DE "X" TEST 
 y_predict = modelo.predict(x_test)
-
-
-# %%
 #PENDIENTES
 pendientes = modelo.coef_
-
-# %%
 #ORDENADA 
 ordenada = modelo.intercept_
+#R2
+print(modelo.score(x_train,y_train))
 
 # %%
-#R2
-'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
+
+
+# %%
+from sklearn.cross_validation import cross_val_score
+scores = cross_val_score(modelo, x_train, y_train, cv= 5)
+print(scores.mean())
+
+# %%
+
+
+# %%
+
+
+# %%
+
+
+# %%
+
+
+# %%
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test.astype(int), y_predict.astype(int))
+
+# %%
+    df = pd.DataFrame({'1':pd.Series(y_test),'2':pd.Series(y_predict)})
+
+# %%
+
+
+# %%
+
+
+# %%
+
 
 # %%
 
