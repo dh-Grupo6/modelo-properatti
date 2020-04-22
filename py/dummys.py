@@ -6,7 +6,7 @@ matriz = pd.read_csv('matriz.csv',sep='|')
 
 
 #GENERO AMBIENTES DE MATRIZ
-data_['ambientes']=data_.merge(matriz,how='left', left_index=True, right_index=True)['ambientes']
+#data_['ambientes']=data_.merge(matriz,how='left', left_index=True, right_index=True)['ambientes']
 
 #GENERO DUMMYS DE AMBIENTES
 data_['1_AMBIENTE'] = (data_.ambientes>=1)&(data_.ambientes<2)
