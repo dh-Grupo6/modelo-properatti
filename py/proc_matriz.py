@@ -4,9 +4,12 @@ import numpy as np
 pd.set_option('chained_assignment',None)
 
 
+
+
+
 def ejecutar_programa(salida):
     ##DEFINO FUNCIONES LOCALES DEL PROGRAMA
-    def f_ambiente (x) :
+    def f_ambiente (x, palabra) :
         if x.contains("ambiente") :
             return 1
         else :
@@ -51,233 +54,13 @@ def ejecutar_programa(salida):
             return 1
     
     
-    def inferir_error_superficies_mayores_cu():
-        df_errores = []
-        df_indices = []
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.surface_covered_in_m2>data.surface_covered_in_m2[data.state_name.str.contains(i)].mean())].sort_values('surface_covered_in_m2'))
-            cantidad_error = tam_total.shape[0]*0.002
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.tail(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.surface_covered_in_m2.loc[indices] = -1
-    
-    def inferir_error_superficies_menores_cu():
-        df_errores = []
-        df_indices = []
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.surface_covered_in_m2<data.surface_covered_in_m2[data.state_name.str.contains(i)].mean())].sort_values('surface_covered_in_m2'))
-            cantidad_error = tam_total.shape[0]*0.018
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.head(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.surface_covered_in_m2.loc[indices] = -2
-    
-    
-    def inferir_error_superficies_mayores_total():
-        df_errores = []
-        df_indices = []
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.surface_total_in_m2>data.surface_total_in_m2[data.state_name.str.contains(i)].mean())].sort_values('surface_total_in_m2'))
-            cantidad_error = tam_total.shape[0]*0.003
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.tail(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.surface_total_in_m2.loc[indices] = -1
-    
-    def inferir_error_superficies_menores_total():
-        df_errores = []
-        df_indices = []
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.surface_total_in_m2<data.surface_total_in_m2[data.state_name.str.contains(i)].mean())].sort_values('surface_total_in_m2'))
-            cantidad_error = tam_total.shape[0]*0.022
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.head(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.surface_total_in_m2.loc[indices] = -2
 
-    def inferir_error_precios_mayores_usd():    
-        
-        df_errores = []
-        df_indices = []
-    
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.price_aprox_usd>data.price_aprox_usd[data.state_name.str.contains(i)].mean())].sort_values('price_aprox_usd'))
-            cantidad_error = tam_total.shape[0]*0.0015
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.tail(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.price_aprox_usd.loc[indices] = -1
-    
-    
-    def inferir_error_precios_menores_usd():    
-        
-        df_errores = []
-        df_indices = []
-    
-        for i in data.state_name.unique():
-            tam_total = pd.DataFrame(data[(data.price_aprox_usd<data.price_aprox_usd[data.state_name.str.contains(i)].mean())].sort_values('price_aprox_usd'))
-            cantidad_error = tam_total.shape[0]*0.018
-            cantidad_error = pd.Series(cantidad_error).astype(int)[0]
-            indices_error = tam_total.head(cantidad_error).index
-            indices = data.loc[indices_error].index.values
-            data.price_aprox_usd.loc[indices] = -2
-    
-    
-    def imputacion_automatica_ambientes(limite):
 
-        data['imputar_ambientes'] = np.nan
-        
-        for i in range(1,limite): 
-        
-            #GENERAR GRUPOS DE SUPERFICIES
-            data['categorias_sup_cubierta_por_m2'] = pd.qcut(data[data.surface_covered_in_m2>10].nueva_surface_total_in_m2,i)
-            #CALCULAR MEDIAS CANTIDAD_AMBIENTES 
-            dfImputacionesAmbientes = pd.DataFrame(data[data.ambientes_ceros!=0].groupby(['state_name','place_name','categorias_sup_cubierta_por_m2'])['ambientes_ceros'].mean())
-            serie_imputaciones_ambientes = data.merge(dfImputacionesAmbientes,how='left',left_on=['state_name','place_name','categorias_sup_cubierta_por_m2'],right_on=['state_name','place_name','categorias_sup_cubierta_por_m2'])['ambientes_ceros_y']   
-            data.imputar_ambientes.update(serie_imputaciones_ambientes)
-            
-        return data.imputar_ambientes
     
     
-        
-    def imputacion_automatica_superficies_cu(limite):
 
-        data['imputando_superficies_cubiertas'] = np.nan
-        
-        for i in range(1,limite): 
-        
-            #GENERAR GRUPOS DE AMBIENTES EN PESOS
-            data['ambientes_imputados_ceros'] = data.ambientes_imputados.fillna(0).astype(float)
-            data['categorias_ambientes'] = pd.qcut(data[data.ambientes_imputados_ceros>=1].ambientes_imputados_ceros,i)
-            #CALCULAR MEDIAS SUPERFICIES CUBIERTAS
-            df_superficies_imput = pd.DataFrame(data[data.ambientes_imputados_ceros>=1].groupby(['state_name','place_name','property_type','categorias_ambientes'])['nueva_surface_total_in_m2'].mean())
-            imputar_serie = data.merge(df_superficies_imput,how='left',left_on=['state_name','place_name','property_type','categorias_ambientes'],right_on=['state_name','place_name','property_type','categorias_ambientes'])['nueva_surface_total_in_m2_y']
-            data.imputando_superficies_cubiertas.update(imputar_serie)
+  
 
-        return data.imputando_superficies_cubiertas
-    
-    
-    def imputacion_automatica_sup_jardines(limite):
-        
-        data['imputando_superficie_jardines'] = np.nan
-        
-        for i in range(1,limite):
-            
-            data['categoria_superficie_total'] = pd.qcut(data.surface_total[(data.surface_total>=1)&(data.superficies_jardines.notnull())],i)
-    
-            ##SUPERFICIES JARDINES IMPUTACION
-            df_sup_jardines = pd.DataFrame(data[(data.surface_total>=1)&(data.superficies_jardines.notnull())].groupby(['state_name','place_name','property_type','categoria_superficie_total'])['superficies_jardines'].mean())
-            serie_imputar_sup_jardines = data.merge(df_sup_jardines,how='left',left_on=['state_name','place_name','property_type','categoria_superficie_total'], right_on=['state_name','place_name','property_type','categoria_superficie_total'])['superficies_jardines_y']
-            data.imputando_superficie_jardines.update(serie_imputar_sup_jardines)
-            
-        return data.imputando_superficie_jardines
-    
-    
-    
-    def imputacion_automatica_sup_terraza(limite):
-        
-        data['imputando_superficie_terraza'] = np.nan
-           
-        for i in range(1,limite):
-        
-            data['categoria_superficie_total'] = pd.qcut(data.surface_total[(data.surface_total>=1)&(data.superficie_terraza.notnull())],i)
-            
-            ##SUPERFICIES TERRAZAS IMPUTACION
-            df_sup_terrazas = pd.DataFrame(data[(data.surface_total>=1)&(data.superficie_terraza.notnull())].groupby(['state_name','place_name','property_type','categoria_superficie_total'])['superficie_terraza'].mean())
-            serie_imputar_sup_jardines = data.merge(df_sup_terrazas, how='left', left_on=['state_name','place_name','property_type','categoria_superficie_total'], right_on=['state_name','place_name','property_type','categoria_superficie_total'])['superficie_terraza_y']
-            data.imputando_superficie_terraza.update(serie_imputar_sup_jardines)
-        
-        return data.imputando_superficie_terraza
-    
-    
-    
-    def imputacion_automatica_sup_terraza_jardines(limite):
-            
-        data['imputando_superficie_terraza_jardines'] = np.nan
-        
-        for i in range (1,limite):
-            
-            data['categoria_superficie_total'] = pd.qcut(data.surface_total[(data.surface_total>=1)&(data.superficie_terraza_jardin.notnull())],i)
-
-            ##SUPERFICIES TERRAZAS/JARDINES IMPUTACION
-            df_sup_terrazas_jardines_terraza = pd.DataFrame(data[(data.surface_total>=1)&(data.superficie_terraza_jardin.notnull())].groupby(['state_name','place_name','property_type','categoria_superficie_total'])['superficie_terraza_jardin'].mean())
-            serie_imputar_sup_jardines_terraza = data.merge(df_sup_terrazas_jardines_terraza, how='left',left_on=['state_name','place_name','property_type','categoria_superficie_total'], right_on=['state_name','place_name','property_type','categoria_superficie_total'])['superficie_terraza_jardin_y']
-            data.imputando_superficie_terraza_jardines.update(serie_imputar_sup_jardines_terraza)
-        
-        return data.imputando_superficie_terraza_jardines
-    
-    
-    def imputacion_automatica_sup_total(limite):
-        
-        data['imputando_superficie_total'] = np.nan
-        
-        for i in range(1,limite):
-        
-            ##IMPUTAR SUPERFICIES TOTALES CON JARDINES
-            data['categorias_jardines'] = pd.qcut(data[data.superficie_jardin_imputada.notnull()].superficie_jardin_imputada,i)
-            df_jardines = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_jardines'])['surface_total'].mean())
-            serie_sup_total_jardines = data.merge(df_jardines,how='left',left_on=['state_name','place_name','property_type','categorias_jardines'],right_on=['state_name','place_name','property_type','categorias_jardines'])['surface_total_y']
-            
-            data.imputando_superficie_total.update(serie_sup_total_jardines)
-            
-            ##IMPUTAR SUPERFICIES TOTALES CON TERRAZAS
-            data['categorias_terraza'] = pd.qcut(data[data.superficie_terraza_imputada.notnull()].superficie_terraza_imputada,10)
-            df_terraza = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_terraza'])['surface_total'].mean())
-            serie_sup_total_terrazas = data.merge(df_terraza, how='left',left_on=['state_name','place_name','property_type','categorias_terraza'],right_on=['state_name','place_name','property_type','categorias_terraza'])['surface_total_y']
-            
-            data.imputando_superficie_total.update(serie_sup_total_terrazas)
-            
-            
-            ##IMPUTAR SUPERFICIES TOTALES CON JARDINES/TERRAZAS
-            data['categorias_terraza_jardines'] = pd.qcut(data[data.sup_terraza_jardin_imputada.notnull()].sup_terraza_jardin_imputada,10)
-            df_terraza_jardin = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_terraza_jardines'])['surface_total'].mean())
-            serie_sup_total_terrazas_jardines = data.merge(df_terraza_jardin, how='left',left_on=['state_name','place_name','property_type','categorias_terraza_jardines'],right_on=['state_name','place_name','property_type','categorias_terraza_jardines'])['surface_total_y']
-            
-            data.imputando_superficie_total.update(serie_sup_total_terrazas_jardines)
-            
-            
-        return data.imputando_superficie_total
-    
-    
-    def imputacion_automatica_precios_usd(limite):
-
-        data['imputar_precios_usd'] = np.nan
-        
-        for i in range(1,limite): 
-                
-            data['categorias_superficie_terraza'] = pd.qcut(data.superficie_terraza,i)
-            ##IMPUTAR PRECIOS DE SUPERFICIES CON TERRAZA
-            df_terraza = pd.DataFrame(data[data.categorias_superficie_terraza.notnull()].groupby(['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza'])['price_aprox_usd'].mean()) 
-            data['imputar_precios_terraza'] = data.merge(df_terraza, how='left', left_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza'],right_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza'])['price_aprox_usd_y']
-            data.imputar_precios_usd.update(data.imputar_precios_terraza)
-
-            data['categorias_superficie_jardines']  = pd.qcut(data.superficies_jardines,i)
-            ##IMPUTAR PRECIOS DE SUPERFICIES CON JARDINES
-            df_jardin = pd.DataFrame(data[data.categorias_superficie_jardines.notnull()].groupby(['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_jardines'])['price_aprox_usd'].mean())
-            data['imputar_precios_jardines'] = data.merge(df_jardin,how='left',left_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_jardines'], right_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_jardines'])['price_aprox_usd_y']
-            data.imputar_precios_usd.update(data.imputar_precios_jardines)
-
-            data['categorias_superficie_terraza_jardin'] = pd.qcut(data.superficie_terraza_jardin,i)
-            ##IMPUTAR PRECIOS DE SUPERFICIES CON TERRAZAS Y JARDINES 
-            df_terraza_jardin = pd.DataFrame(data[data.categorias_superficie_terraza_jardin.notnull()].groupby(['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza_jardin'])['price_aprox_usd'].mean())
-            data['imputar_precios_terraza_jardin'] = data.merge(df_terraza_jardin, how='left', left_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza_jardin'], right_on=['state_name','place_name','property_type','categoria_superficie_cubierta_imputada','categorias_superficie_terraza_jardin'])['price_aprox_usd_y']
-            data.imputar_precios_usd.update(data.imputar_precios_terraza_jardin)
-
-        return data.imputar_precios_usd
-    
-    def imputacion_automatica_precios_usd_sup_total(limite):
-        
-        data['imputar_precios_usd'] = np.nan
-        
-        for i in range(1,limite):
-            
-            data['categorias_superficie_total_m2'] = pd.qcut(data.surface_total,i)
-            df_precio_sup_total = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_superficie_total_m2'])['price_aprox_usd'].mean())
-            serie_imputada_precio_sup_total = data.merge(df_precio_sup_total,how='left',left_on=['state_name','place_name','property_type','categorias_superficie_total_m2'], right_on=['state_name','place_name','property_type','categorias_superficie_total_m2'])['price_aprox_usd_y']            
-            data.imputar_precios_usd.update(serie_imputada_precio_sup_total)            
-        
-        return data.imputar_precios_usd
     
     #LEER ARCHIVO
     data = pd.read_csv('/home/DS-DH/DigitalHouse/desafio/properatti.csv')
@@ -412,33 +195,33 @@ def ejecutar_programa(salida):
         
 
     ##IMPUTAR AMBIENTES
-    data['ambientes_imputados'] = imputacion_automatica_ambientes(20)
+    data['ambientes_imputados'] = ImputarAmbientes(20)
     data.ambientes_imputados.update(data.nuevos_ambientes)
     
         
     #IMPUTAR FALTANTES CANTIDAD_AMBIENTES CON SUPERFICIES CUBIERTAS
     data['superficie_cubierta_imputada'] = np.nan
-    imputar_serie = imputacion_automatica_superficies_cu(5)
+    imputar_serie = ImputarSupCubierta(5)
     data.superficie_cubierta_imputada.update(imputar_serie)
 
     data.superficie_cubierta_imputada.update(data.nueva_surface_total_in_m2)
     data.superficie_cubierta_imputada[(data.superficie_cubierta_imputada<50)&(data.property_type.str.contains('house'))] = np.nan
     
     ##IMPUTAR SUPERFICIE JARDIN
-    data['superficie_jardin_imputada'] = imputacion_automatica_sup_jardines(10)
+    data['superficie_jardin_imputada'] = ImputarSupJardin(10)
     data.superficie_jardin_imputada.update(data.superficies_jardines)
     
     ##IMPUTAR SUPERFICIE TERRAZA
-    data['superficie_terraza_imputada'] = imputacion_automatica_sup_terraza(10)
+    data['superficie_terraza_imputada'] = ImputarSupTer(10)
     data.superficie_terraza_imputada.update(data.superficie_terraza)
     
     ##IMPUTAR SUPERFICIE JARDIN/TERRAZA
-    data['sup_terraza_jardin_imputada'] = imputacion_automatica_sup_terraza_jardines(10)
+    data['sup_terraza_jardin_imputada'] = ImputarSupJarTer(10)
     data.sup_terraza_jardin_imputada.update(data.superficie_terraza_jardin)
     
     
     ##IMPUTAR SUPERFICIE TOTAL DE JARDINES TERRAZAS 
-    data['superficie_total_imputada'] = imputacion_automatica_sup_total(20)
+    data['superficie_total_imputada'] = ImputarSupTotalJarTer(20)
     data.superficie_total_imputada.update(data.surface_total)
     
     
@@ -458,11 +241,11 @@ def ejecutar_programa(salida):
     
     
     #ACTUALIZO POR SUPERFICIE TOTAL
-    serie_imputada_sup_total_precios = imputacion_automatica_precios_usd_sup_total(20)
+    serie_imputada_sup_total_precios = ImputarPrecioSupTotal(20)
     data.precios_usd_imputados.update(serie_imputada_sup_total_precios)
     
     #ACTUALIZO POR SUPERFICIE CUBIERTA (JARDINES; TERRAZAS; JARDINES Y TERRAZAS)
-    serie_imputada_precios = imputacion_automatica_precios_usd(20)
+    serie_imputada_precios = ImputarPrecioJarTer(20)
     data.precios_usd_imputados.update(serie_imputada_precios)
     
     #ACTUALIZO POR COLUMNA PRICE_APROX_USD
