@@ -5,6 +5,91 @@ pd.set_option('chained_assignment',None)
 
 
 
+def modelo_regresion_lineal(p_modeloMatriz):
+
+    modeloMatriz = p_modeloMatriz
+ 
+    xs = modeloMatriz.iloc[:,1:]
+    y = modeloMatriz.iloc[:,0]
+    #TRANSFORMO VARIABLES INDEPENDIENTES EN FORMATO MATRIZ
+    xs = xs.as_matrix()
+    #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
+    y = y.as_matrix()
+    #IMPORTAR LIBRERIAS DE SKLEARN
+    from sklearn import linear_model
+    from sklearn.model_selection import train_test_split
+    #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    #FIT 
+
+  
+    modelo = linear_model.LinearRegression(normalize=False)
+    modelo.fit(x_train,y_train)
+    #PREDECIR DATOS "Y" DE "X" TEST 
+    y_predict = modelo.predict(x_test)
+    #PENDIENTES
+    pendientes = modelo.coef_
+    #ORDENADA 
+    ordenada = modelo.intercept_
+    #R2
+    'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
+    import matplotlib.pyplot as plt
+    #GENERO EJE X -> SUPERFICIE TOTAL
+    x1 = x_test[:,0]
+    #GENERO EJE Y -> PRECIO M2 DE TEST
+    x2 = y_test
+    # EJE Y -> PRECIO M2 PREDICHO
+    x3 = y_predict
+
+    #PLOT
+    plt.scatter(x1,x2,label='test modelo', color='blue')
+    plt.scatter(x1,x3,label='prediccion modelo', color='red')
+    plt.title('grafico modelo')
+    plt.show()
+
+    from sklearn import metrics
+    import numpy as np
+    print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
+    print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
+    print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
+    print ('R2:', metrics.r2_score(y_test, y_predict))
+    
+    return modelo
+
+
+def limpiarDatos(p_data, alpha=1): 
+
+
+    
+    data=p_data
+    
+    data = OutliersSupTotal(data, alpha)
+    data = OutliersSupCubierta(data, alpha)
+    data = OutliersPrecioUSD(data, alpha)
+    data = OutliersPrecioM2(data, alpha)
+    
+    data = quitarMayusculasAcentos(data)
+    data['ambientes'] = generoAmbientes(data)
+    #data = utl.TransformacionData(data)
+    data['superficieJardines'] = generarSupJardines(data)
+    data['superficieTerraza'] = generarSupTerrazas(data)
+    data['superficieJarTer'] = generarSupJarTer(data)
+    
+    #IMPUTAR POR LA MEDIA ESTIMADA POR LOCALIDAD, BARRIO, PROPIEDAD, ETC
+    data.imputar_ambientes = imputarAmbientes(data)
+    data.imputar_ambientes = data.ambientes
+    data.surface_covered_in_m2 = ImputarSupCubierta(data)
+    data.imputar_ambientes[data.imputar_ambientes==0]=np.nan
+    data.surface_total_in_m2 = ImputarSupTotal(data)
+    data.surface_total_in_m2 = ImputarTotalMenorCubierta(data)
+    data.price_aprox_usd = imputarPrecio(data)
+    data.price_usd_per_m2 = imputarPrecioM2(data)
+    
+    
+    return data
+
+
+
 def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, tipo, barrio):
 
                             
@@ -12,12 +97,11 @@ def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, t
     
     ##SUPERFICIE TOTAL
     df0 = pd.DataFrame({'superficie_total':pd.Series(superficie_total)})
-    df0_2 = pd.DataFrame({'superficie_total':pd.Series(superficie_total**2)})
     
     ##BARRIOS
     barrios = pd.Series(modeloMatriz.iloc[:,15:].columns)
     barrios = (barrios.str.replace('_',' '))
-    df1 = barrios.apply(lambda x: 1 if x==var_barrio else 0)
+    df1 = barrios.apply(lambda x: 1 if x==barrio else 0)
     df2 = pd.DataFrame(columns=barrios)
     df2 = df2.append({ 'flores' : 0 } , ignore_index=True)
     df2 = df2.fillna(0).astype(int)
@@ -69,8 +153,8 @@ def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, t
     
     predecir_data = pd.concat([df0,df4_proc],axis=1)
     predecir_data = pd.concat([predecir_data, df2],axis=1)
-    predecir_data = pd.concat([predecir_data,df0_2],axis=1)
-    
+    predecir_data.superficie_total_2 = predecir_data.superficie_total**2
+
     return predecir_data
 
 
@@ -155,10 +239,13 @@ def generarDummies(p_matriz):
 
 	matriz = pd.concat([y,xs],axis=1)
 
+	matriz['superficie_total_2'] = matriz.superficie_total**2
+
+
 	return matriz
 
 
-def matriz(p_data):
+def GenerarMatriz(p_data):
 
     data = p_data
 
@@ -399,6 +486,10 @@ def OutliersSupTotal(p_data, Desviacion):
 
     #GENERO COLUMNA CON LA FORMULA DE CHEUVENET PARA EL CALCULO DE OUTLIERS
     criterio_cheuvenet__ = (abs(data_modificada.surface_total_in_m2-media__))/(str__)
+
+
+    #guardar_datos_outliers_originales = pd.DataFrame(data_modificada.surface_total_in_m2.loc[criterio_cheuvenet__>Desviacion])
+    #data.merge(guardar_datos_outliers_originales, how='left', left_index=True, right_index=True)['']
     data_modificada.surface_total_in_m2.loc[criterio_cheuvenet__>Desviacion] = np.nan
     
     
