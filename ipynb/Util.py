@@ -1,7 +1,11 @@
 import numpy as np
 import pandas as pd
 import unidecode as uni
+from sklearn.cross_validation import cross_val_score
 pd.set_option('chained_assignment',None)
+
+
+#def normalizar(p_columna):
 
 
 
@@ -11,6 +15,9 @@ def modelo_regresion_lineal(p_modeloMatriz):
  
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
+    
+    #for 
+    #xs = xs.apply(lambda x: normalizar(x))
     #TRANSFORMO VARIABLES INDEPENDIENTES EN FORMATO MATRIZ
     xs = xs.as_matrix()
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
@@ -19,12 +26,14 @@ def modelo_regresion_lineal(p_modeloMatriz):
     from sklearn import linear_model
     from sklearn.model_selection import train_test_split
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
     #FIT 
 
   
-    modelo = linear_model.LinearRegression(normalize=False)
+    modelo = linear_model.LinearRegression(fit_intercept=False,normalize=True)
     modelo.fit(x_train,y_train)
+    #CROSS VALIDATION
+    scores = cross_val_score(modelo, x_train, y_train, cv=5)
     #PREDECIR DATOS "Y" DE "X" TEST 
     y_predict = modelo.predict(x_test)
     #PENDIENTES
@@ -32,7 +41,7 @@ def modelo_regresion_lineal(p_modeloMatriz):
     #ORDENADA 
     ordenada = modelo.intercept_
     #R2
-    'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
+    #'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
     import matplotlib.pyplot as plt
     #GENERO EJE X -> SUPERFICIE TOTAL
     x1 = x_test[:,0]
@@ -49,25 +58,73 @@ def modelo_regresion_lineal(p_modeloMatriz):
 
     from sklearn import metrics
     import numpy as np
+    print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
     print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
     print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
     print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
-    print ('R2:', metrics.r2_score(y_test, y_predict))
+    print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))   
+    print('EL R2 TEST ES DE: ', metrics.r2_score(y_test, y_predict))
+    #print ('R2:', metrics.r2_score(y_test, y_predict))
     
     return modelo
 
 
+
 def limpiarDatos(p_data, alpha=1): 
-
-
     
     data=p_data
+
+    #NULL LAS FILAS REPETIDAS DEL CAMPO DESCRIPCION
+    #data = data.drop_duplicates(subset=['description'], keep='first')
     
+    #NULL LAS FILAS CON SUPERFICIE CUBIERTA MENOR A 16
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2<6)&(data.property_type.str.contains('apartment'))] = np.nan
+    
+    #NULL LAS FILAS CON SUPERFICIE TOTAL MENOR A 16
+    #data.surface_total_in_m2[(data.surface_total_in_m2<6)&(data.property_type.str.contains('apartment'))] = np.nan
+    
+    #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR 50 DE CASAS 
+    #data = data[(~((data.surface_covered_in_m2<50)&(data.property_type.str.contains('house'))))]
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2<10)&(data.property_type.str.contains('house'))] = np.nan
+
+    #NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 50 DE CASAS
+    #data.surface_total_in_m2[(data.surface_total_in_m2<10)&(data.property_type.str.contains('house'))] = np.nan
+
+    ##NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR A 30 DE PH
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2<10)&(data.property_type.str.contains('PH'))] = np.nan 
+
+    ##NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 30 DE PH
+    #data.surface_total_in_m2[(data.surface_total_in_m2<10)&(data.property_type.str.contains('PH'))] = np.nan 
+    
+    #NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE DTO
+    #data.surface_total_in_m2[(data.surface_total_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan
+
+    #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE DTO
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan 
+
+    #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE CASAS
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
+
+    #NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE CASAS
+    #data.surface_total_in_m2[(data.surface_total_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
+
+    #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES DE PH
+    #data.surface_covered_in_m2[(data.surface_covered_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
+
+    #NULL LAS FILAS CON SUPERFICIES TOTAL MAYORES DE PH
+    #data.surface_total_in_m2[(data.surface_total_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
+
+    #QUITO FILAS DE STORE
+    #data = data[~data.property_type.str.contains('store')]
+
+
+    # PONGO NULOS LOS OUTLIERS CON ->> Z-SCORE = alpha 
     data = OutliersSupTotal(data, alpha)
     data = OutliersSupCubierta(data, alpha)
     data = OutliersPrecioUSD(data, alpha)
     data = OutliersPrecioM2(data, alpha)
-    
+
+  
     data = quitarMayusculasAcentos(data)
     data['ambientes'] = generoAmbientes(data)
     #data = utl.TransformacionData(data)
@@ -87,7 +144,6 @@ def limpiarDatos(p_data, alpha=1):
     
     
     return data
-
 
 
 def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, tipo, barrio):
@@ -240,8 +296,7 @@ def generarDummies(p_matriz):
 	matriz = pd.concat([y,xs],axis=1)
 
 	matriz['superficie_total_2'] = matriz.superficie_total**2
-
-
+	matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
 	return matriz
 
 
@@ -292,7 +347,6 @@ def ImputarSupCubierta(p_data):
     data.superficie_cubierta_imputada.update(imputar_serie)
     data.superficie_cubierta_imputada.update(data.surface_total_in_m2)
     data.superficie_cubierta_imputada.update(data.surface_covered_in_m2)
-    
 
     return data.superficie_cubierta_imputada
 
@@ -309,6 +363,7 @@ def ImputarSupTotal(p_data):
     data.superficie_total_imputada_Ambientes.update(data.superficie_total_imputada_Cubierta)
     data.superficie_total_imputada_Ambientes.update(data.surface_total_in_m2)
 
+
     return data.superficie_total_imputada_Ambientes
 
 
@@ -322,7 +377,6 @@ def ImputarTotalMenorCubierta(p_data):
 	superficie_terraza_imputada_ceros = data.superficieTerraza.fillna(0)
 	sup_terraza_jardin_imputada_ceros = data.superficieJarTer.fillna(0)
 	data.surface_total_in_m2.loc[data.surface_total_in_m2-data.surface_covered_in_m2<0] = data.surface_covered_in_m2 + superficie_jardin_imputada_ceros + superficie_terraza_imputada_ceros + sup_terraza_jardin_imputada_ceros
-	data['surface_total_in_m2'] = data.surface_total_in_m2
 
 	return data.surface_total_in_m2
 
@@ -735,7 +789,7 @@ def imputarPrecioM2(p_data):
 	data = p_data
 
 	serie_precio_m2 = data.price_aprox_usd/data.surface_total_in_m2
-	serie_precio_m2.update(data.price_usd_per_m2)
+	serie_precio_m2.update(data.price_usd_per_m2)	
 
 	return serie_precio_m2
 

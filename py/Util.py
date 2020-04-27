@@ -4,6 +4,9 @@ import unidecode as uni
 pd.set_option('chained_assignment',None)
 
 
+#def normalizar(p_columna):
+
+
 
 def modelo_regresion_lineal(p_modeloMatriz):
 
@@ -11,6 +14,9 @@ def modelo_regresion_lineal(p_modeloMatriz):
  
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
+    
+    #for 
+    #xs = xs.apply(lambda x: normalizar(x))
     #TRANSFORMO VARIABLES INDEPENDIENTES EN FORMATO MATRIZ
     xs = xs.as_matrix()
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
@@ -23,7 +29,7 @@ def modelo_regresion_lineal(p_modeloMatriz):
     #FIT 
 
   
-    modelo = linear_model.LinearRegression(normalize=False)
+    modelo = linear_model.LinearRegression(normalize=True)
     modelo.fit(x_train,y_train)
     #PREDECIR DATOS "Y" DE "X" TEST 
     y_predict = modelo.predict(x_test)
@@ -32,7 +38,7 @@ def modelo_regresion_lineal(p_modeloMatriz):
     #ORDENADA 
     ordenada = modelo.intercept_
     #R2
-    'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
+    #'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
     import matplotlib.pyplot as plt
     #GENERO EJE X -> SUPERFICIE TOTAL
     x1 = x_test[:,0]
@@ -52,22 +58,71 @@ def modelo_regresion_lineal(p_modeloMatriz):
     print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
     print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
     print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
-    print ('R2:', metrics.r2_score(y_test, y_predict))
+    print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))   
+    print('EL R2 TEST ES DE: ', metrics.r2_score(y_test, y_predict))
+    #print ('R2:', metrics.r2_score(y_test, y_predict))
     
     return modelo
 
 
+
 def limpiarDatos(p_data, alpha=1): 
-
-
     
     data=p_data
+
+    #NULL LAS FILAS REPETIDAS DEL CAMPO DESCRIPCION
+    #data = data.drop_duplicates(subset=['description'], keep='first')
     
+    #NULL LAS FILAS CON SUPERFICIE CUBIERTA MENOR A 16
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<16)&(data.property_type.str.contains('apartment'))] = np.nan
+    
+    #NULL LAS FILAS CON SUPERFICIE TOTAL MENOR A 16
+    data.surface_total_in_m2[(data.surface_total_in_m2<16)&(data.property_type.str.contains('apartment'))] = np.nan
+    
+    #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR 50 DE CASAS 
+    #data = data[(~((data.surface_covered_in_m2<50)&(data.property_type.str.contains('house'))))]
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<50)&(data.property_type.str.contains('house'))] = np.nan
+
+    #NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 50 DE CASAS
+    data.surface_total_in_m2[(data.surface_total_in_m2<50)&(data.property_type.str.contains('house'))] = np.nan
+
+    ##NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR A 30 DE PH
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<30)&(data.property_type.str.contains('PH'))] = np.nan 
+
+    ##NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 30 DE PH
+    data.surface_total_in_m2[(data.surface_total_in_m2<30)&(data.property_type.str.contains('PH'))] = np.nan 
+    
+	#NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE DTO
+	data.surface_total_in_m2[(data.surface_total_in_m2>500)&(data.property_type.str.contains('apartment'))] = np.nan
+
+	#NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE DTO
+	data.surface_covered_in_m2[(data.surface_covered_in_m2>500)&(data.property_type.str.contains('apartment'))] = np.nan 
+
+	#NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE CASAS
+	data.surface_covered_in_m2[(data.surface_covered_in_m2>20000)&(data.property_type.str.contains('house'))] = np.nan 
+
+	#NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE CASAS
+	data.surface_covered_in_m2[(data.surface_total_in_m2>20000)&(data.property_type.str.contains('house'))] = np.nan 
+
+	#NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES DE PH
+	data.surface_covered_in_m2[(data.surface_covered_in_m2>750)&(data.property_type.str.contains('PH'))] = np.nan
+
+	#NULL LAS FILAS CON SUPERFICIES TOTAL MAYORES DE PH
+	data.surface_total_in_m2[(data.surface_total_in_m2>750)&(data.property_type.str.contains('PH'))] = np.nan
+
+	#QUITO FILAS DE STORE
+	data = data[~data.property_type.str.contains('store')]
+
+
+	# PONGO NULOS LOS OUTLIERS CON ->> Z-SCORE = alpha 
+
     data = OutliersSupTotal(data, alpha)
     data = OutliersSupCubierta(data, alpha)
     data = OutliersPrecioUSD(data, alpha)
     data = OutliersPrecioM2(data, alpha)
-    
+
+  
+
     data = quitarMayusculasAcentos(data)
     data['ambientes'] = generoAmbientes(data)
     #data = utl.TransformacionData(data)
