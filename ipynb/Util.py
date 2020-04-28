@@ -2,10 +2,87 @@ import numpy as np
 import pandas as pd
 import unidecode as uni
 from sklearn.cross_validation import cross_val_score
+from sklearn import metrics
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 pd.set_option('chained_assignment',None)
 
 
 #def normalizar(p_columna):
+
+
+
+
+def modelo_lasso_cross_validation(p_modeloMatriz):
+    
+    modeloMatriz = p_modeloMatriz
+
+    xs = modeloMatriz.iloc[:,1:]
+    y = modeloMatriz.iloc[:,0]
+    xs = xs.as_matrix()
+    y = y.as_matrix()
+    lassocv = linear_model.LassoCV(alphas=np.linspace(0.01,100, 1000), cv=5, normalize=True)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    lassocv.fit(x_train, y_train)
+    alpha_lasso = lassocv.alpha_
+
+    lasso = linear_model.Lasso(alpha=alpha_lasso, normalize=True)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    lasso_model =lasso.fit(x_train, y_train)
+    scores = cross_val_score(lasso_model, x_train, y_train, cv=5)
+    y_predict = lasso_model.predict(x_test)
+
+    plt.scatter(x_test[:,0], y_test, color='blue')
+    plt.scatter(x_test[:,0], y_predict, color='red')
+
+    print('LASSO REGRESSION')
+    print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
+    print ('MAE LASSO:', metrics.mean_absolute_error(y_test, y_predict))
+    print ('MSE LASSO:', metrics.mean_squared_error(y_test, y_predict))
+    print ('RMSE LASSO:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
+    print ("LASSO -> R2 TRAIN: ", lasso_model.score(x_train, y_train))
+    print ("LASSO -> R2 TEST: ", lasso_model.score(x_test, y_test))
+
+    return lasso_model
+
+
+
+    
+
+def modelo_ridge_cross_validation(p_modeloMatriz):
+    
+    modeloMatriz = p_modeloMatriz
+
+    xs = modeloMatriz.iloc[:,1:]
+    y = modeloMatriz.iloc[:,0]
+    xs = xs.as_matrix()
+    y = y.as_matrix()
+
+    rlmcv = linear_model.RidgeCV(alphas=np.linspace(0.01,100, 1000), cv=5, normalize=True)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    rlmcv.fit(x_train, y_train)
+    predictions = rlmcv.predict(x_test)
+    alpha_ridge = rlmcv.alpha_
+
+    rlm = linear_model.Ridge(alpha=alpha_ridge, normalize=True)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+    ridge_model = rlm.fit(x_train, y_train)
+    scores = cross_val_score(ridge_model, x_train, y_train, cv=5)
+    y_predict = ridge_model.predict(x_test)
+
+    plt.scatter(x_test[:,0], y_test, color='blue')
+    plt.scatter(x_test[:,0], y_predict, color='red')
+
+    print('REGULARIZACION CON RIDGE')
+    print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
+    print ('MAE RIDGE:', metrics.mean_absolute_error(y_test, y_predict))
+    print ('MSE RIDGE:', metrics.mean_squared_error(y_test, y_predict))
+    print ('RMSE RIDGE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))   
+    print ("RIDGE -> R2 TRAIN: ", ridge_model.score(x_train, y_train))
+    print ("RIDGE -> R2 TEST: ", ridge_model.score(x_test, y_test))
+
+    return ridge_model
 
 
 
@@ -22,9 +99,6 @@ def modelo_regresion_lineal(p_modeloMatriz):
     xs = xs.as_matrix()
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
     y = y.as_matrix()
-    #IMPORTAR LIBRERIAS DE SKLEARN
-    from sklearn import linear_model
-    from sklearn.model_selection import train_test_split
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
     x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
     #FIT 
@@ -42,7 +116,7 @@ def modelo_regresion_lineal(p_modeloMatriz):
     ordenada = modelo.intercept_
     #R2
     #'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
-    import matplotlib.pyplot as plt
+
     #GENERO EJE X -> SUPERFICIE TOTAL
     x1 = x_test[:,0]
     #GENERO EJE Y -> PRECIO M2 DE TEST
@@ -56,14 +130,13 @@ def modelo_regresion_lineal(p_modeloMatriz):
     plt.title('grafico modelo')
     plt.show()
 
-    from sklearn import metrics
-    import numpy as np
     print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
     print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
     print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
     print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
-    print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))   
-    print('EL R2 TEST ES DE: ', metrics.r2_score(y_test, y_predict))
+    print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))
+    print('EL R2 TEST ES DE: ', modelo.score(x_test,y_test))    
+    #print('EL R2 TEST ES DE: ', metrics.r2_score(y_test, y_predict))
     #print ('R2:', metrics.r2_score(y_test, y_predict))
     
     return modelo
