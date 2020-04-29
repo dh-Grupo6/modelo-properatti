@@ -6,8 +6,8 @@ from sklearn import metrics
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 pd.set_option('chained_assignment',None)
-
 
 #def normalizar(p_columna):
 
@@ -86,6 +86,58 @@ def modelo_ridge_cross_validation(p_modeloMatriz):
 
 
 
+def modelo_regresion_lineal_normalizar_antes(p_modeloMatriz):
+
+    modeloMatriz = p_modeloMatriz
+    xs = modeloMatriz.iloc[:,1:]
+    y = modeloMatriz.iloc[:,0]
+    
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+
+    #ESTANDARIZAR
+    stdscaler = StandardScaler()
+    x_train['superficie_total'] = stdscaler.fit_transform(x_train[['superficie_total']])
+    y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
+
+    #for i in x_test.columns:   
+     #   x_test[i] = stdscaler.fit_transform(x_test[[i]])
+    x_test['superficie_total'] = stdscaler.fit_transform(x_test[['superficie_total']])
+    y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
+
+
+    #FIT 
+    modelo = linear_model.LinearRegression(fit_intercept=False,normalize=False)
+    modelo.fit(x_train,y_train)
+    #CROSS VALIDATION
+    scores = cross_val_score(modelo, x_train, y_train, cv=5)
+    #PREDECIR DATOS "Y" DE "X" TEST 
+    y_predict = modelo.predict(x_test)
+
+    #GENERO EJE X -> SUPERFICIE TOTAL
+    x1 = x_test.superficie_total
+    #GENERO EJE Y -> PRECIO M2 DE TEST
+    x2 = y_test
+    # EJE Y -> PRECIO M2 PREDICHO
+    x3 = y_predict
+
+    #PLOT
+    plt.scatter(x1,x2,label='test modelo', color='blue')
+    plt.scatter(x1,x3,label='prediccion modelo', color='red')
+    #plt.scatter(x2,x3,label='prediccion modelo_2', color='yellow')
+    plt.title('grafico modelo')
+    plt.show()
+
+    print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
+    print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
+    print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
+    print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
+    print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))
+    print('EL R2 TEST ES DE: ', modelo.score(x_test,y_test))    
+    
+    return modelo
+
+
+
 def modelo_regresion_lineal(p_modeloMatriz):
 
     modeloMatriz = p_modeloMatriz
@@ -101,9 +153,26 @@ def modelo_regresion_lineal(p_modeloMatriz):
     y = y.as_matrix()
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
     x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
-    #FIT 
 
-  
+    #ESTANDARIZAR
+    #stdscaler = StandardScaler()
+    #for i in x_train.columns:   
+    #    x_train[i] = stdscaler.fit_transform(x_train[[i]])
+    #y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
+
+    #stdscaler = StandardScaler()
+    #for i in x_test.columns:   
+    #    x_test[i] = stdscaler.fit_transform(x_test[[i]])
+    #y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
+
+
+    #x_train = x_train.as_matrix()
+    #x_test = x_test.as_matrix()
+    #y_train = y_train.as_matrix()
+    #y_test = y_test.as_matrix()
+
+
+    #FIT 
     modelo = linear_model.LinearRegression(fit_intercept=False,normalize=True)
     modelo.fit(x_train,y_train)
     #CROSS VALIDATION
@@ -124,9 +193,12 @@ def modelo_regresion_lineal(p_modeloMatriz):
     # EJE Y -> PRECIO M2 PREDICHO
     x3 = y_predict
 
+
+
     #PLOT
     plt.scatter(x1,x2,label='test modelo', color='blue')
     plt.scatter(x1,x3,label='prediccion modelo', color='red')
+    #plt.scatter(x2,x3,label='prediccion modelo_2', color='yellow')
     plt.title('grafico modelo')
     plt.show()
 
@@ -369,7 +441,7 @@ def generarDummies(p_matriz):
 	matriz = pd.concat([y,xs],axis=1)
 
 	matriz['superficie_total_2'] = matriz.superficie_total**2
-	matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
+	#matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
 	return matriz
 
 
