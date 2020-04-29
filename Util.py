@@ -89,21 +89,18 @@ def modelo_ridge_cross_validation(p_modeloMatriz):
 def modelo_regresion_lineal_normalizar_antes(p_modeloMatriz):
 
     modeloMatriz = p_modeloMatriz
+
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
     
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
 
     #ESTANDARIZAR
     stdscaler = StandardScaler()
-    x_train['superficie_total'] = stdscaler.fit_transform(x_train[['superficie_total']])
-    y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
+    for i in xs.columns:
+        xs[i] = stdscaler.fit_transform(xs[[i]])
+    y = stdscaler.fit_transform(pd.DataFrame(y))
 
-    #for i in x_test.columns:   
-     #   x_test[i] = stdscaler.fit_transform(x_test[[i]])
-    x_test['superficie_total'] = stdscaler.fit_transform(x_test[['superficie_total']])
-    y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
-
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.8)
 
     #FIT 
     modelo = linear_model.LinearRegression(fit_intercept=False,normalize=False)
@@ -145,31 +142,13 @@ def modelo_regresion_lineal(p_modeloMatriz):
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
     
-    #for 
-    #xs = xs.apply(lambda x: normalizar(x))
+
     #TRANSFORMO VARIABLES INDEPENDIENTES EN FORMATO MATRIZ
     xs = xs.as_matrix()
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
     y = y.as_matrix()
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
     x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
-
-    #ESTANDARIZAR
-    #stdscaler = StandardScaler()
-    #for i in x_train.columns:   
-    #    x_train[i] = stdscaler.fit_transform(x_train[[i]])
-    #y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
-
-    #stdscaler = StandardScaler()
-    #for i in x_test.columns:   
-    #    x_test[i] = stdscaler.fit_transform(x_test[[i]])
-    #y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
-
-
-    #x_train = x_train.as_matrix()
-    #x_test = x_test.as_matrix()
-    #y_train = y_train.as_matrix()
-    #y_test = y_test.as_matrix()
 
 
     #FIT 
