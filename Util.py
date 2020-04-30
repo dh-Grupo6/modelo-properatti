@@ -93,14 +93,20 @@ def modelo_regresion_lineal_normalizar_antes(p_modeloMatriz):
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
     
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
 
     #ESTANDARIZAR
     stdscaler = StandardScaler()
-    for i in xs.columns:
-        xs[i] = stdscaler.fit_transform(xs[[i]])
-    y = stdscaler.fit_transform(pd.DataFrame(y))
+    
+    #NORMALIZO VARIABLES DE ENTRENAMIENTO
+    for i in x_train.columns:
+        x_train[i] = stdscaler.fit_transform(x_train[[i]])
+    y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
 
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.8)
+    #NORMALIZO VARIABLES DE TESTING
+    for i in x_test.columns:
+        x_test[i] = stdscaler.fit_transform(x_test[[i]])
+    y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
 
     #FIT 
     modelo = linear_model.LinearRegression(fit_intercept=False,normalize=False)
@@ -119,7 +125,7 @@ def modelo_regresion_lineal_normalizar_antes(p_modeloMatriz):
 
     #PLOT
     plt.scatter(x1,x2,label='test modelo', color='blue')
-    plt.scatter(x1,x3,label='prediccion modelo', color='red')
+    #plt.scatter(x1,x3,label='prediccion modelo', color='red')
     #plt.scatter(x2,x3,label='prediccion modelo_2', color='yellow')
     plt.title('grafico modelo')
     plt.show()
@@ -142,14 +148,12 @@ def modelo_regresion_lineal(p_modeloMatriz):
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
     
-
     #TRANSFORMO VARIABLES INDEPENDIENTES EN FORMATO MATRIZ
     xs = xs.as_matrix()
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
     y = y.as_matrix()
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
     x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
-
 
     #FIT 
     modelo = linear_model.LinearRegression(fit_intercept=False,normalize=True)
@@ -162,8 +166,6 @@ def modelo_regresion_lineal(p_modeloMatriz):
     pendientes = modelo.coef_
     #ORDENADA 
     ordenada = modelo.intercept_
-    #R2
-    #'EL RESULTADO DEL MODELO ES DE {}'.format(modelo.score(x_train,y_train))
 
     #GENERO EJE X -> SUPERFICIE TOTAL
     x1 = x_test[:,0]
@@ -171,24 +173,18 @@ def modelo_regresion_lineal(p_modeloMatriz):
     x2 = y_test
     # EJE Y -> PRECIO M2 PREDICHO
     x3 = y_predict
-
-
-
     #PLOT
     plt.scatter(x1,x2,label='test modelo', color='blue')
     plt.scatter(x1,x3,label='prediccion modelo', color='red')
     #plt.scatter(x2,x3,label='prediccion modelo_2', color='yellow')
     plt.title('grafico modelo')
     plt.show()
-
     print('CROSS VALIDATION:', scores[0], scores[1], scores[2], scores[3],scores[4])
     print ('MAE:', metrics.mean_absolute_error(y_test, y_predict))
     print ('MSE:', metrics.mean_squared_error(y_test, y_predict))
     print ('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_predict)))
     print('EL R2 TRAIN ES DE: ', modelo.score(x_train,y_train))
     print('EL R2 TEST ES DE: ', modelo.score(x_test,y_test))    
-    #print('EL R2 TEST ES DE: ', metrics.r2_score(y_test, y_predict))
-    #print ('R2:', metrics.r2_score(y_test, y_predict))
     
     return modelo
 
@@ -199,47 +195,91 @@ def limpiarDatos(p_data, alpha=1):
     data=p_data
 
     #NULL LAS FILAS REPETIDAS DEL CAMPO DESCRIPCION
-    #data = data.drop_duplicates(subset=['description'], keep='first')
+    data = data.drop_duplicates(subset=['description'], keep='first')
     
+    #QUITO LOS STORE
+    data = data[~(data.property_type.str.contains('store'))]
+
+    #NULL LAS SUPERFICIES CUBIERTAS MAYORES A LAS TOTALES
+    data.surface_covered_in_m2 = data.surface_covered_in_m2[(data.surface_covered_in_m2>data.surface_total_in_m2)]
+
     #NULL LAS FILAS CON SUPERFICIE CUBIERTA MENOR A 16
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2<6)&(data.property_type.str.contains('apartment'))] = np.nan
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<16)&(data.property_type.str.contains('apartment'))] = np.nan
     
     #NULL LAS FILAS CON SUPERFICIE TOTAL MENOR A 16
-    #data.surface_total_in_m2[(data.surface_total_in_m2<6)&(data.property_type.str.contains('apartment'))] = np.nan
+    data.surface_total_in_m2[(data.surface_total_in_m2<16)&(data.property_type.str.contains('apartment'))] = np.nan
     
     #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR 50 DE CASAS 
     #data = data[(~((data.surface_covered_in_m2<50)&(data.property_type.str.contains('house'))))]
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2<10)&(data.property_type.str.contains('house'))] = np.nan
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<50)&(data.property_type.str.contains('house'))] = np.nan
 
     #NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 50 DE CASAS
-    #data.surface_total_in_m2[(data.surface_total_in_m2<10)&(data.property_type.str.contains('house'))] = np.nan
+    data.surface_total_in_m2[(data.surface_total_in_m2<50)&(data.property_type.str.contains('house'))] = np.nan
 
     ##NULL LAS FILAS CON SUPERFICIES CUBIERTAS MENOR A 30 DE PH
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2<10)&(data.property_type.str.contains('PH'))] = np.nan 
+    data.surface_covered_in_m2[(data.surface_covered_in_m2<50)&(data.property_type.str.contains('PH'))] = np.nan 
 
     ##NULL LAS FILAS CON SUPERFICIES TOTALES MENOR A 30 DE PH
-    #data.surface_total_in_m2[(data.surface_total_in_m2<10)&(data.property_type.str.contains('PH'))] = np.nan 
+    data.surface_total_in_m2[(data.surface_total_in_m2<50)&(data.property_type.str.contains('PH'))] = np.nan 
     
     #NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE DTO
-    #data.surface_total_in_m2[(data.surface_total_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan
+    data.surface_total_in_m2[(data.surface_total_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan
 
     #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE DTO
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan 
+    data.surface_covered_in_m2[(data.surface_covered_in_m2>1000)&(data.property_type.str.contains('apartment'))] = np.nan 
 
     #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES A 500 DE CASAS
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
+    data.surface_covered_in_m2[(data.surface_covered_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
 
     #NULL LAS FILAS CON SUPERFICIES TOTALES MAYORES A 500 DE CASAS
-    #data.surface_total_in_m2[(data.surface_total_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
+    data.surface_total_in_m2[(data.surface_total_in_m2>30000)&(data.property_type.str.contains('house'))] = np.nan 
 
     #NULL LAS FILAS CON SUPERFICIES CUBIERTAS MAYORES DE PH
-    #data.surface_covered_in_m2[(data.surface_covered_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
+    data.surface_covered_in_m2[(data.surface_covered_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
 
     #NULL LAS FILAS CON SUPERFICIES TOTAL MAYORES DE PH
-    #data.surface_total_in_m2[(data.surface_total_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
+    data.surface_total_in_m2[(data.surface_total_in_m2>1200)&(data.property_type.str.contains('PH'))] = np.nan
 
-    #QUITO FILAS DE STORE
-    #data = data[~data.property_type.str.contains('store')]
+
+    #NULL lAS FILAS CON SUPERFICIES TOTALES MENORES A 
+    data.surface_total_in_m2[data.surface_total_in_m2<16] = np.nan
+
+    #QUITAS LAS FILAS CON SUPERFICIES TOTALES MAYORES A
+    data = data[(data.surface_total_in_m2<10000)|(data.surface_total_in_m2.isnull())]
+
+
+    #NULL CUBIERTAS MENORES A 
+    data.surface_covered_in_m2[data.surface_covered_in_m2<16] = np.nan
+
+    #QUITO LAS FILAS CON SUPERFICIES CUBIERTA MAYORES A
+    data = data[(data.surface_covered_in_m2<10000)|(data.surface_covered_in_m2.isnull())]
+
+
+
+    #NULL FILAS CON PRECIOS MENORES A $500
+    data.price_aprox_usd[data.price_aprox_usd<500] = np.nan
+
+
+    #QUITAMOS LOS PRECIOS M2 
+    data = data[~((data.price_usd_per_m2>6000)|(data.price_usd_per_m2<500))]
+
+    
+
+    def generar_m2(p_data):
+
+        data = p_data
+
+        data['nuevos_precios_m2'] = data.price_aprox_usd/data.surface_total_in_m2 
+
+        data.price_aprox_usd[data.nuevos_precios_m2>6000] = np.nan
+        
+        data.price_aprox_usd[data.nuevos_precios_m2<500] = np.nan
+
+        return data.price_aprox_usd
+
+
+    data.price_aprox_usd = generar_m2(data)
+
 
 
     # PONGO NULOS LOS OUTLIERS CON ->> Z-SCORE = alpha 
@@ -258,13 +298,13 @@ def limpiarDatos(p_data, alpha=1):
     
     #IMPUTAR POR LA MEDIA ESTIMADA POR LOCALIDAD, BARRIO, PROPIEDAD, ETC
     data.imputar_ambientes = imputarAmbientes(data)
-    data.imputar_ambientes = data.ambientes
+    #data.imputar_ambientes = data.ambientes
     data.surface_covered_in_m2 = ImputarSupCubierta(data)
     data.imputar_ambientes[data.imputar_ambientes==0]=np.nan
     data.surface_total_in_m2 = ImputarSupTotal(data)
     data.surface_total_in_m2 = ImputarTotalMenorCubierta(data)
     data.price_aprox_usd = imputarPrecio(data)
-    data.price_usd_per_m2 = imputarPrecioM2(data)
+    #data.price_usd_per_m2 = imputarPrecioM2(data)
     
     
     return data
@@ -419,7 +459,7 @@ def generarDummies(p_matriz):
 
 	matriz = pd.concat([y,xs],axis=1)
 
-	matriz['superficie_total_2'] = matriz.superficie_total**2
+	#matriz['superficie_total_2'] = matriz.superficie_total**2
 	#matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
 	return matriz
 
@@ -442,9 +482,9 @@ def GenerarMatriz(p_data):
                             'superficie_cubierta_m2':data.surface_covered_in_m2,
                             'precio_aprox_usd':data.price_aprox_usd,
                             'precio_m2':data.price_usd_per_m2,
-                            'superficieJardines':data.superficieJardines,
-                            'superficieTerrazas':data.superficieTerraza,
-                            'superficieJardinesTerrazas':data.superficieJarTer
+                            'superficieJardines':data.superficieJardines.apply(lambda x: 1 if x else 0),
+                            'superficieTerrazas':data.superficieTerraza.apply(lambda x: 1 if x else 0),
+                            'superficieJardinesTerrazas':data.superficieJarTer.apply(lambda x: 1 if x else 0)
                            })
 
     return matriz
@@ -506,55 +546,49 @@ def ImputarTotalMenorCubierta(p_data):
 
 
 def generarSupJardines(p_data):
-	
-	data = p_data
+    
+    data = p_data
 
-	##OBTENGOS JARDINES, TERRAZAS 
-	booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
-	booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
+    ##OBTENGOS JARDINES, TERRAZAS 
+    booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
+    booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
 
-	##CALCULO SUPERFICIES DE JARDINES (SIN TERRAZA) 
-	serie_jardines = (booleanos_jardines) & (~booleanos_terraza) & (data.surface_covered_in_m2.notnull()) & (data.surface_total_in_m2.notnull())
-	data['superficie_jardin_patio'] = data.surface_total_in_m2[serie_jardines]-data.surface_covered_in_m2[serie_jardines]
-	serie_superficie_jardines = pd.DataFrame(data.superficie_jardin_patio[(data.superficie_jardin_patio.notnull()) & (data.superficie_jardin_patio > 0)])
-	data['superficies_jardines'] = data.merge(serie_superficie_jardines,how='left',left_on=['Unnamed: 0'],right_index=True)['superficie_jardin_patio_y']
+    ##CALCULO SUPERFICIES DE JARDINES (SIN TERRAZA) 
+    serie_jardines = (booleanos_jardines) & (~booleanos_terraza) 
+    data['superficies_jardines'] = serie_jardines
 
-	return data.superficies_jardines 
+    return data.superficies_jardines 
 
 
 def generarSupTerrazas(p_data):
-	
-	data = p_data
+    
+    data = p_data
 
-	##OBTENGOS JARDINES, TERRAZAS 
-	booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
-	booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
+    ##OBTENGOS JARDINES, TERRAZAS 
+    booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
+    booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
 
-	##CALCULO SUPERFICIES DE TERRAZAS (SIN JARDINES)
-	serie_terraza = (booleanos_terraza) & (~booleanos_jardines) & (data.surface_covered_in_m2.notnull()) & (data.surface_total_in_m2.notnull())
-	superficie_terraza_indices = pd.DataFrame(data.surface_total_in_m2[serie_terraza]-data.surface_covered_in_m2[serie_terraza],columns=['terraza_y'])    
-	columna_superficie_terraza = data.merge(superficie_terraza_indices[superficie_terraza_indices.terraza_y>0],how='left', left_on=['Unnamed: 0'],right_index=True)['terraza_y']
-	data['superficie_terraza'] = columna_superficie_terraza
+    ##CALCULO SUPERFICIES DE TERRAZAS (SIN JARDINES)
+    serie_terraza = (booleanos_terraza) & (~booleanos_jardines) 
+    data['superficie_terraza'] = serie_terraza
 
-	return data.superficie_terraza
+    return data.superficie_terraza
 
 
 def generarSupJarTer(p_data):
 
-	data = p_data
+    data = p_data
 
-	##OBTENGOS JARDINES, TERRAZAS 
-	booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
-	booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
+    ##OBTENGOS JARDINES, TERRAZAS 
+    booleanos_jardines =(data.description.str.contains('parquizado'))|(data.description.str.contains('patio'))|(data.description.str.contains('jardin')) 
+    booleanos_terraza = (data.description.str.contains('terraza'))|(data.description.str.contains('quincho')) 
 
 
-	##CALCULO SUPERFICIES DE TERRAZAS CON JARDINES
-	serie_terraza_jardin = (booleanos_terraza) & (booleanos_jardines) & (data.surface_covered_in_m2.notnull()) & (data.surface_total_in_m2.notnull())
-	superficie_terraza_jardin_indices = pd.DataFrame(data.surface_total_in_m2[serie_terraza_jardin]-data.surface_covered_in_m2[serie_terraza_jardin],columns=['terraza_jardin_y'])
-	columna_superficie_terraza_jardin = data.merge(superficie_terraza_jardin_indices[superficie_terraza_jardin_indices.terraza_jardin_y>0],how='left', left_on=['Unnamed: 0'], right_index=True)['terraza_jardin_y']
-	data['superficie_terraza_jardin'] = columna_superficie_terraza_jardin
+    ##CALCULO SUPERFICIES DE TERRAZAS CON JARDINES
+    serie_terraza_jardin = (booleanos_terraza) & (booleanos_jardines) 
+    data['superficie_terraza_jardin'] = serie_terraza_jardin
 
-	return data.superficie_terraza_jardin
+    return data.superficie_terraza_jardin
 
 
 def quitarMayusculasAcentos(p_data):
@@ -841,13 +875,13 @@ def imputarPrecio(p_data):
 
     data = p_data
 
-    data['imputandoPrecioSupTotalJarTer'] = ImputarPrecioJarTer(data)
+    #data['imputandoPrecioSupTotalJarTer'] = ImputarPrecioJarTer(data)
     data['imputandoPrecioSupTotal'] = ImputarPrecioSupTotal(data)
 
-    data.imputandoPrecioSupTotalJarTer.update(data.imputandoPrecioSupTotal)
-    data.imputandoPrecioSupTotalJarTer.update(data.price_aprox_usd)
+    #data.imputandoPrecioSupTotalJarTer.update(data.imputandoPrecioSupTotal)
+    data.imputandoPrecioSupTotal.update(data.price_aprox_usd)
 
-    return data.imputandoPrecioSupTotalJarTer
+    return data.imputandoPrecioSupTotal
 
 
 
@@ -908,12 +942,33 @@ def ImputarPrecioJarTer(p_data, rango=5):
 
 
 
+#def imputarPrecioM2(p_data):
+
+ #   data = p_data
+
+
+  #  data['nuevos_precios_m2'] = data.price_aprox_usd/data.surface_total_in_m2
+    
+
+   # data['nuevos_precios_m2'].update(data.price_usd_per_m2)  
+
+
+    #return data.nuevos_precios_m2
+    
+
 def imputarPrecioM2(p_data):
 
-	data = p_data
+    data = p_data
 
-	serie_precio_m2 = data.price_aprox_usd/data.surface_total_in_m2
-	serie_precio_m2.update(data.price_usd_per_m2)	
+    data['imputar_precios_m2'] = np.nan
+    
 
-	return serie_precio_m2
 
+    data['categorias_superficie_total_m2'] = pd.qcut(data.surface_total_in_m2,20)
+    data['categorias_precios_aprox_usd'] = pd.qcut(data.price_aprox_usd,20)
+    df_precio_sup_total = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_precios_aprox_usd'])['price_usd_per_m2'].mean())
+    serie_imputada_precio_sup_total = data.merge(df_precio_sup_total,how='left',left_on=['state_name','place_name','property_type','categorias_precios_aprox_usd'], right_on=['state_name','place_name','property_type','categorias_precios_aprox_usd'])['price_usd_per_m2_y']            
+    data.imputar_precios_m2.update(serie_imputada_precio_sup_total)
+    data.imputar_precios_m2.update(data.price_usd_per_m2)
+
+    return data.imputar_precios_m2
