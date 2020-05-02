@@ -7,10 +7,22 @@ from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
+import statsmodels.api as sm
 pd.set_option('chained_assignment',None)
 
-#def normalizar(p_columna):
+def summary(p_modeloMatriz):
 
+    modeloMatriz = p_modeloMatriz
+
+    xs = modeloMatriz.iloc[:,1:]
+    y = modeloMatriz.iloc[:,0]
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.5)
+    model = sm.OLS(y_train, x_train).fit()
+    predictions = model.predict(x_test)
+    print ("EMC:", metrics.mean_squared_error(y_test, predictions))
+    print(model.summary())
+
+    return modelo
 
 
 
@@ -93,20 +105,26 @@ def modelo_regresion_lineal_normalizar_antes(p_modeloMatriz):
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
     
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
-
     #ESTANDARIZAR
     stdscaler = StandardScaler()
-    
+
     #NORMALIZO VARIABLES DE ENTRENAMIENTO
-    for i in x_train.columns:
-        x_train[i] = stdscaler.fit_transform(x_train[[i]])
-    y_train = stdscaler.fit_transform(pd.DataFrame(y_train))
+    for i in xs.columns:
+        xs[i] = stdscaler.fit_transform(xs[[i]])
+    y = stdscaler.fit_transform(pd.DataFrame(y))
+
+
+
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.4)
+
+    
+
+    
 
     #NORMALIZO VARIABLES DE TESTING
-    for i in x_test.columns:
-        x_test[i] = stdscaler.fit_transform(x_test[[i]])
-    y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
+    #for i in x_test.columns:
+    #    x_test[i] = stdscaler.fit_transform(x_test[[i]])
+    #y_test = stdscaler.fit_transform(pd.DataFrame(y_test))
 
     #FIT 
     modelo = linear_model.LinearRegression(fit_intercept=False,normalize=False)
@@ -153,10 +171,10 @@ def modelo_regresion_lineal(p_modeloMatriz):
     #TRANSFORMO VARIABLE DEPENDIENTE EN FORMATO MATRIZ
     y = y.as_matrix()
     #PARTICIONAR DATOS DE ENTRENAMIENTO Y TESTING
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.6)
 
     #FIT 
-    modelo = linear_model.LinearRegression(fit_intercept=False,normalize=True)
+    modelo = linear_model.LinearRegression(fit_intercept=False,normalize=True, n_jobs=1)
     modelo.fit(x_train,y_train)
     #CROSS VALIDATION
     scores = cross_val_score(modelo, x_train, y_train, cv=5)
@@ -255,9 +273,10 @@ def limpiarDatos(p_data, alpha=1):
     data = data[(data.surface_covered_in_m2<10000)|(data.surface_covered_in_m2.isnull())]
 
 
-
     #NULL FILAS CON PRECIOS MENORES A $500
     data.price_aprox_usd[data.price_aprox_usd<500] = np.nan
+
+    data.price_aprox_usd[data.price_aprox_usd>2000000] = np.nan
 
 
     #QUITAMOS LOS PRECIOS M2 
@@ -298,7 +317,6 @@ def limpiarDatos(p_data, alpha=1):
     
     #IMPUTAR POR LA MEDIA ESTIMADA POR LOCALIDAD, BARRIO, PROPIEDAD, ETC
     data.imputar_ambientes = imputarAmbientes(data)
-    #data.imputar_ambientes = data.ambientes
     data.surface_covered_in_m2 = ImputarSupCubierta(data)
     data.imputar_ambientes[data.imputar_ambientes==0]=np.nan
     data.surface_total_in_m2 = ImputarSupTotal(data)
@@ -384,84 +402,85 @@ def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, t
 
 def generarDummies(p_matriz):
 
-	matriz = p_matriz
+    matriz = p_matriz
 
-	# TRANSFORMO A FLOAT PARA QUE PUEDA COMPARAR EL PROXIMO PROCESO
-	matriz.ambientes = matriz.ambientes.astype(float)
+    # TRANSFORMO A FLOAT PARA QUE PUEDA COMPARAR EL PROXIMO PROCESO
+    matriz.ambientes = matriz.ambientes.astype(float)
 
-	#GENERO DUMMYS DE AMBIENTES
-	matriz['1_AMBIENTE'] = (matriz.ambientes>=1)&(matriz.ambientes<2)
-	matriz['2_AMBIENTE'] = (matriz.ambientes>=2)&(matriz.ambientes<3)
-	matriz['3_AMBIENTE'] = (matriz.ambientes>=3)&(matriz.ambientes<4)
-	matriz['4_AMBIENTE'] = (matriz.ambientes>=4)&(matriz.ambientes<5)
-	matriz['5_AMBIENTE'] = (matriz.ambientes>=5)&(matriz.ambientes<6)
-	matriz['6_AMBIENTE'] = (matriz.ambientes>=6)&(matriz.ambientes<7)
-	matriz['7_AMBIENTE'] = (matriz.ambientes>=7)&(matriz.ambientes<8)
+    #GENERO DUMMYS DE AMBIENTES
+    matriz['1_AMBIENTE'] = (matriz.ambientes>=1)&(matriz.ambientes<2)
+    matriz['2_AMBIENTE'] = (matriz.ambientes>=2)&(matriz.ambientes<3)
+    matriz['3_AMBIENTE'] = (matriz.ambientes>=3)&(matriz.ambientes<4)
+    matriz['4_AMBIENTE'] = (matriz.ambientes>=4)&(matriz.ambientes<5)
+    matriz['5_AMBIENTE'] = (matriz.ambientes>=5)&(matriz.ambientes<6)
+    matriz['6_AMBIENTE'] = (matriz.ambientes>=6)&(matriz.ambientes<7)
+    matriz['7_AMBIENTE'] = (matriz.ambientes>=7)&(matriz.ambientes<8)
 
-	matriz[['1_AMBIENTE','2_AMBIENTE','3_AMBIENTE','4_AMBIENTE', '5_AMBIENTE','6_AMBIENTE','7_AMBIENTE']] = matriz[['1_AMBIENTE','2_AMBIENTE','3_AMBIENTE','4_AMBIENTE', '5_AMBIENTE','6_AMBIENTE','7_AMBIENTE']].applymap(lambda x : 1 if (x) else 0)
-
-
-	#GENERO DUMMYS TIPO DE PROPIEDAD 
-	matriz['CASA'] = matriz.propiedad.str.contains('house')
-	matriz['PH'] =  matriz.propiedad.str.contains('PH')
-	matriz['DTO'] = matriz.propiedad.str.contains('apartment')
-	matriz[['CASA','PH','DTO']] = matriz[['CASA','PH','DTO']].applymap(lambda x : 1 if x else 0)
-
-	#ELIMINO REGISTROS NULOS DE VARIABLES A UTILIZAR EN EL MODELO
-	matriz=matriz[matriz.precio_m2.notnull()]
-	matriz=matriz[matriz.superficie_total.notnull()]
-	matriz=matriz[matriz.ambientes.notnull()]
-
-	#GENERO DUMMYS DE BARRIOS
+    matriz[['1_AMBIENTE','2_AMBIENTE','3_AMBIENTE','4_AMBIENTE', '5_AMBIENTE','6_AMBIENTE','7_AMBIENTE']] = matriz[['1_AMBIENTE','2_AMBIENTE','3_AMBIENTE','4_AMBIENTE', '5_AMBIENTE','6_AMBIENTE','7_AMBIENTE']].applymap(lambda x : 1 if (x) else 0)
 
 
-	#QUITO NULOS DE LA COLUMNA STATE_NAME
-	matriz = matriz[matriz.barrio.notnull()]
+    #GENERO DUMMYS TIPO DE PROPIEDAD 
+    matriz['CASA'] = matriz.propiedad.str.contains('house')
+    matriz['PH'] =  matriz.propiedad.str.contains('PH')
+    matriz['DTO'] = matriz.propiedad.str.contains('apartment')
+    matriz[['CASA','PH','DTO']] = matriz[['CASA','PH','DTO']].applymap(lambda x : 1 if x else 0)
+
+    #ELIMINO REGISTROS NULOS DE VARIABLES A UTILIZAR EN EL MODELO
+    matriz=matriz[matriz.precio_m2.notnull()]
+    matriz=matriz[matriz.superficie_total.notnull()]
+    matriz=matriz[matriz.ambientes.notnull()]
+
+    #GENERO DUMMYS DE BARRIOS
 
 
-	#CREO LISTA DE BARRIOS 
-	barrios = matriz[matriz.localidad.str.contains('capital')].barrio.unique()
+    #QUITO NULOS DE LA COLUMNA STATE_NAME
+    matriz = matriz[matriz.barrio.notnull()]
 
 
-	#GENERO DUMMYS
-
-	for barrio in barrios:
-	    indices_barrios = (matriz.index[matriz.barrio.str.contains(barrio)])
-	    barrio = barrio.lower().replace(' ','_')
-	    df = matriz
-	    df.barrio = df.barrio.apply(lambda x : x.lower().replace(' ','_'))
-	    df[barrio] = df.barrio.str.contains(barrio)
+    #CREO LISTA DE BARRIOS 
+    barrios = matriz[matriz.localidad.str.contains('capital')].barrio.unique()
 
 
-	numero_barrios = len(matriz.barrio[matriz.localidad.str.contains('capital')].unique())
-	indices_dummys_barrios = matriz.shape[1]-numero_barrios
+    #GENERO DUMMYS
 
-	#CREO EL DATAFRAME CON LAS DUMMYS DE BARRIOS
-	dummys_barrios = matriz.iloc[:,indices_dummys_barrios:]
-
-
-	dummys_barrios = dummys_barrios.applymap(lambda x : 1 if (x) else 0)
-
-	#GENERO DUMMYS DE BARRIOS EN EL DATAFRAME
-	matriz.iloc[:,indices_dummys_barrios:] = dummys_barrios
+    for barrio in barrios:
+        indices_barrios = (matriz.index[matriz.barrio.str.contains(barrio)])
+        barrio = barrio.lower().replace(' ','_')
+        df = matriz
+        df.barrio = df.barrio.apply(lambda x : x.lower().replace(' ','_'))
+        df[barrio] = df.barrio.str.contains(barrio)
 
 
-	matriz = matriz.loc[matriz.localidad.str.contains('capital')]
+    numero_barrios = len(matriz.barrio[matriz.localidad.str.contains('capital')].unique())
+    indices_dummys_barrios = matriz.shape[1]-numero_barrios
+
+    #CREO EL DATAFRAME CON LAS DUMMYS DE BARRIOS
+    dummys_barrios = matriz.iloc[:,indices_dummys_barrios:]
 
 
-	#SKLEARN
-	nuevos_feactures = matriz[['superficieJardines','superficieTerrazas','superficieJardinesTerrazas']].applymap(lambda x: 1 if x>0 else 0)	#GENERO VARIABLES INDEPENDIENTES
-	x_feactures=matriz.iloc[:,16:]
-	df1 = pd.concat([matriz['superficie_total'],nuevos_feactures],axis=1)
-	xs = pd.concat([df1,x_feactures],axis=1)
-	#GENERO VARIABLE DEPENDIENTE
-	y = matriz.precio_m2
+    dummys_barrios = dummys_barrios.applymap(lambda x : 1 if (x) else 0)
 
-	matriz = pd.concat([y,xs],axis=1)
+    #GENERO DUMMYS DE BARRIOS EN EL DATAFRAME
+    matriz.iloc[:,indices_dummys_barrios:] = dummys_barrios
 
-	#matriz['superficie_total_2'] = matriz.superficie_total**2
-	#matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
-	return matriz
+
+    matriz = matriz.loc[matriz.localidad.str.contains('capital')]
+
+
+    #SKLEARN
+    nuevos_feactures = matriz[['superficieJardines','superficieTerrazas','superficieJardinesTerrazas']].applymap(lambda x: 1 if x>0 else 0) #GENERO VARIABLES INDEPENDIENTES
+    #nuevos_feactures_2 = pd.DataFrame(matriz.superficieJardines +  matriz.superficieTerrazas + matriz.superficieJardinesTerrazas)
+    x_feactures=matriz.iloc[:,16:]
+    df1 = pd.concat([matriz['superficie_total'],nuevos_feactures],axis=1)
+    xs = pd.concat([df1,x_feactures],axis=1)
+    #GENERO VARIABLE DEPENDIENTE
+    y = matriz.precio_m2
+
+    matriz = pd.concat([y,xs],axis=1)
+
+    #matriz['superficie_total_2'] = matriz.superficie_total**2
+    #matriz['superficie_total_3'] = (matriz.superficie_total**2)**2
+    return matriz
 
 
 def GenerarMatriz(p_data):
@@ -942,33 +961,36 @@ def ImputarPrecioJarTer(p_data, rango=5):
 
 
 
-#def imputarPrecioM2(p_data):
-
- #   data = p_data
-
-
-  #  data['nuevos_precios_m2'] = data.price_aprox_usd/data.surface_total_in_m2
-    
-
-   # data['nuevos_precios_m2'].update(data.price_usd_per_m2)  
-
-
-    #return data.nuevos_precios_m2
-    
-
 def imputarPrecioM2(p_data):
 
     data = p_data
 
-    data['imputar_precios_m2'] = np.nan
+
+    data['nuevos_precios_m2'] = data.price_aprox_usd/data.surface_total_in_m2
+    
+    data.nuevos_precios_m2[data.nuevos_precios_m2<500] = np.nan
+
+    data.nuevos_precios_m2[data.nuevos_precios_m2>6000] = np.nan
+
+    #data['nuevos_precios_m2'].update(data.price_usd_per_m2)  
+
+
+    return data.nuevos_precios_m2
+    
+
+#def imputarPrecioM2(p_data):
+
+    #data = p_data
+
+    #data['imputar_precios_m2'] = np.nan
     
 
 
-    data['categorias_superficie_total_m2'] = pd.qcut(data.surface_total_in_m2,20)
-    data['categorias_precios_aprox_usd'] = pd.qcut(data.price_aprox_usd,20)
-    df_precio_sup_total = pd.DataFrame(data.groupby(['state_name','place_name','property_type','categorias_precios_aprox_usd'])['price_usd_per_m2'].mean())
-    serie_imputada_precio_sup_total = data.merge(df_precio_sup_total,how='left',left_on=['state_name','place_name','property_type','categorias_precios_aprox_usd'], right_on=['state_name','place_name','property_type','categorias_precios_aprox_usd'])['price_usd_per_m2_y']            
-    data.imputar_precios_m2.update(serie_imputada_precio_sup_total)
-    data.imputar_precios_m2.update(data.price_usd_per_m2)
+    #data['categorias_superficie_total_m2'] = pd.qcut(data.surface_total_in_m2,20)
+    #data['categorias_precios_aprox_usd'] = pd.qcut(data.price_aprox_usd,20)
+    #df_precio_sup_total = pd.DataFrame(data.groupby(['state_name','place_name','property_type','surface_total_in_m2','price_aprox_usd'])['price_usd_per_m2'].mean())
+    #serie_imputada_precio_sup_total = data.merge(df_precio_sup_total,how='left',left_on=['state_name','place_name','property_type','surface_total_in_m2','price_aprox_usd'], right_on=['state_name','place_name','property_type','surface_total_in_m2','price_aprox_usd'])['price_usd_per_m2_y']            
+    #data.imputar_precios_m2.update(serie_imputada_precio_sup_total)
+    #data.imputar_precios_m2.update(data.price_usd_per_m2)
 
-    return data.imputar_precios_m2
+    #return data.imputar_precios_m2
