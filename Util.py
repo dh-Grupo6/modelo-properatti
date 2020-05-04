@@ -10,19 +10,92 @@ from sklearn.preprocessing import StandardScaler
 import statsmodels.api as sm
 pd.set_option('chained_assignment',None)
 
+
+def eliminar_features(p_modeloMatriz):
+    
+    modeloMatriz = p_modeloMatriz
+
+    xs = modeloMatriz.iloc[:,1:]
+    
+    y = modeloMatriz.iloc[:,0]
+
+    df = pd.DataFrame(modeloMatriz.precio_m2)
+
+    for i in xs.columns:
+
+        #DEJO 30 VARIABLES PARA QUE EXPLIQUEN EL MODELO
+        if abs(y.corr(xs[i]))>0.0719: 
+
+            df = pd.concat([df, pd.DataFrame(xs[i])],axis=1)
+
+    return df 
+
+
+
+def eliminar_features_lasso(p_modeloMatriz):
+
+    modeloMatriz_2 = p_modeloMatriz
+
+    cantidad_indices = 0
+
+    for i in range (1, 10):
+    
+
+        modelo_lasso = modelo_lasso_cross_validation(modeloMatriz_2)
+
+        df1 =pd.DataFrame({'coef':modelo_lasso.coef_})
+
+        df2 = pd.DataFrame(modeloMatriz_2.columns)
+
+        df2 = df2[1:] 
+
+        df2 = df2.reset_index(drop=True)
+
+        df0 =pd.concat([df1,df2],axis=1)
+
+        indices = []
+
+        for i in df0.index:
+            if abs(df0.coef[i])!=0.000000:
+                indices.append(df0.index[i])
+
+
+        print('len indices; ',len(indices))
+
+        print('tamaño df0: ', df0.shape[0])
+        
+        if len(indices) == df0.shape[0]:
+
+            print('break')
+
+            break
+
+
+        columnas = pd.DataFrame(df0.iloc[indices])[0]
+
+        modeloMatriz_2 = modeloMatriz_2[columnas]
+
+        modeloMatriz_2 =  pd.concat([p_modeloMatriz.precio_m2, modeloMatriz_2],axis=1)
+
+    return modeloMatriz_2
+
+
+
+
+
 def summary(p_modeloMatriz):
 
     modeloMatriz = p_modeloMatriz
 
     xs = modeloMatriz.iloc[:,1:]
     y = modeloMatriz.iloc[:,0]
-    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.5)
+    x_train, x_test, y_train, y_test = train_test_split(xs, y, test_size=0.6)
     model = sm.OLS(y_train, x_train).fit()
     predictions = model.predict(x_test)
     print ("EMC:", metrics.mean_squared_error(y_test, predictions))
     print(model.summary())
 
-    return modelo
+    return model
 
 
 
@@ -300,14 +373,12 @@ def limpiarDatos(p_data, alpha=1):
     data.price_aprox_usd = generar_m2(data)
 
 
-
     # PONGO NULOS LOS OUTLIERS CON ->> Z-SCORE = alpha 
     data = OutliersSupTotal(data, alpha)
     data = OutliersSupCubierta(data, alpha)
     data = OutliersPrecioUSD(data, alpha)
     data = OutliersPrecioM2(data, alpha)
 
-  
     data = quitarMayusculasAcentos(data)
     data['ambientes'] = generoAmbientes(data)
     #data = utl.TransformacionData(data)
@@ -324,6 +395,12 @@ def limpiarDatos(p_data, alpha=1):
     data.price_aprox_usd = imputarPrecio(data)
     #data.price_usd_per_m2 = imputarPrecioM2(data)
     
+
+    data = OutliersSupTotal(data, alpha+2)
+    data = OutliersSupCubierta(data, alpha+2)
+    data = OutliersPrecioUSD(data, alpha+2)
+    data = OutliersPrecioM2(data, alpha+3)
+
     
     return data
 
@@ -332,20 +409,20 @@ def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, t
 
                             
     modeloMatriz = p_modeloMatriz
-    
+
     ##SUPERFICIE TOTAL
     df0 = pd.DataFrame({'superficie_total':pd.Series(superficie_total)})
-    
+
     ##BARRIOS
-    barrios = pd.Series(modeloMatriz.iloc[:,15:].columns)
+    barrios = pd.Series(modeloMatriz.iloc[:,7:].columns)
     barrios = (barrios.str.replace('_',' '))
     df1 = barrios.apply(lambda x: 1 if x==barrio else 0)
     df2 = pd.DataFrame(columns=barrios)
     df2 = df2.append({ 'flores' : 0 } , ignore_index=True)
     df2 = df2.fillna(0).astype(int)
     df2.iloc[:,barrios[barrios.str.contains(barrio+'$',regex=True)].index] = '1'
-    
-    
+
+
     ##AMBIENTES Y TIPOS
 
 
@@ -364,36 +441,28 @@ def nuevosDatos (p_modeloMatriz, superficie_total, jardin, terraza, ambientes, t
         var_jardinTerraza = ''
 
     
-    df4 = pd.DataFrame({'jardin':pd.Series(0), 'terraza':pd.Series(0),'jardinTerraza':pd.Series(0),'1_AMBIENTE':pd.Series(0),'2_AMBIENTE':pd.Series(0),'3_AMBIENTE':pd.Series(0),'4_AMBIENTE':pd.Series(0),'5_AMBIENTE':pd.Series(0),'6_AMBIENTE':pd.Series(0),'7_AMBIENTE':pd.Series(0),'CASA':pd.Series(0),'PH':pd.Series(0),'DTO':pd.Series(0)})
+    df4 = pd.DataFrame({'jardin':pd.Series(0),'jardinTerraza':pd.Series(0),'CASA':pd.Series(0),'PH':pd.Series(0),'DTO':pd.Series(0)})
     indices = df4.columns
     indices = pd.Series(indices).astype(str)
-    indices_bool = (indices.apply(lambda x: x==ambientes+'_AMBIENTE')) | (indices.apply(lambda x: x==tipo)) | (indices.apply(lambda x: x==var_jardin)) | (indices.apply(lambda x: x==var_terraza)) | (indices.apply(lambda x: x==var_jardinTerraza))   
+    indices_bool = (indices.apply(lambda x: x=='CASA')) | (indices.apply(lambda x: x==var_jardin)) | (indices.apply(lambda x: x==var_terraza)) | (indices.apply(lambda x: x==var_jardinTerraza))  
     serie_df4 = indices_bool.apply(lambda x : 1 if x else 0)
-    
+
     df4_proc = pd.DataFrame({
 
-        'jardin':[serie_df4[0]], 
-        'terraza':[serie_df4[1]],
-        'jardinTerraza':[serie_df4[2]],
-        '1_AMBIENTE':[serie_df4[3]],
-        '2_AMBIENTE':[serie_df4[4]],
-        '3_AMBIENTE':[serie_df4[5]],
-        '4_AMBIENTE':[serie_df4[6]],
-        '5_AMBIENTE':[serie_df4[7]],
-        '6_AMBIENTE':[serie_df4[8]],
-        '7_AMBIENTE':[serie_df4[9]],
-        'CASA':[serie_df4[10]],
-        'PH':[serie_df4[11]],
-        'DTO':[serie_df4[12]]
+    'jardin':pd.Series(serie_df4[0]), 
+    'jardinTerraza':pd.Series(serie_df4[1]),
+    'CASA':pd.Series(serie_df4[2]),
+    'PH':pd.Series(serie_df4[3]),
+    'DTO':pd.Series(serie_df4[4])
+    })
 
-        })
-    
     
     predecir_data = pd.concat([df0,df4_proc],axis=1)
     predecir_data = pd.concat([predecir_data, df2],axis=1)
-    predecir_data.superficie_total_2 = predecir_data.superficie_total**2
+    #predecir_data.superficie_total_2 = predecir_data.superficie_total**2
 
     return predecir_data
+
 
 
 
